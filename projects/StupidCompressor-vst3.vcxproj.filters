@@ -400,6 +400,9 @@
     <ClInclude Include="..\src\interface\STextButton.h">
       <Filter>src\interface</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\dsp\SFilter.h">
+      <Filter>src\dsp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

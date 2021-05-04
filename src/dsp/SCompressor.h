@@ -41,7 +41,7 @@ public:
   }
 
   float tick(float input) {
-    movingAverage = (movingAverage * 50 + abs(lastValue)) / 51;
+    movingAverage = (movingAverage * 50 + abs(input)) / 51;
     if (movingAverage*2 > threshold) {
       gain = (gain * attack + getGain(movingAverage*2)) / (attack + 1);
     }

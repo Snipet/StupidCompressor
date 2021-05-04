@@ -18,10 +18,10 @@
 StupidCompressor::StupidCompressor(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
 {
-  GetParam(kGainIn)->InitDouble("In Gain", 100., 0., 500., 0.01, "%");
-  GetParam(kGainOut)->InitDouble("Out Gain", 100., 0., 500., 0.01, "%");
+  GetParam(kGainIn)->InitDouble("In Gain", 100., 0., 1000., 0.01, "%");
+  GetParam(kGainOut)->InitDouble("Out Gain", 100., 0.,1000., 0.01, "%");
   GetParam(kThreshold)->InitDouble("Threshold", 1., 0.001, 1, 0.001, "");
-  GetParam(kAttack)->InitDouble("Attack", 50., 0.1, 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kAttack)->InitDouble("Attack", 50., 0.01, 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRelease)->InitDouble("Release", 50., 5., 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRatio)->InitDouble("Ratio", 2, 1, 100, 0.1, "", 0, "", IParam::ShapePowCurve(3));
 
@@ -84,6 +84,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     pGraphics->AttachControl(new STextLogoButton(IRECT(5,0,190,40)));
 
 
+
   };
   points.resize(0);
   Point p;
@@ -95,6 +96,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   movingAverage = 0;
   leftC.setSampleRate(GetSampleRate());
   rightC.setSampleRate(GetSampleRate());
+  splitter.set(0.5, 0.5);
 #endif
 }
 
@@ -103,11 +105,20 @@ void StupidCompressor::ProcessBlock(sample** inputs, sample** outputs, int nFram
 {
   const double gainIn = GetParam(kGainIn)->Value() / 100.;
   const double gainOut = GetParam(kGainOut)->Value() / 100.;
+  float left;
+  float right;
   for (int s = 0; s < nFrames; s++) {
-    outputs[0][s] = leftC.tick(gainIn * inputs[0][s]) * gainOut;
-    outputs[1][s] = rightC.tick(gainIn * inputs[1][s]) * gainOut;
-    movingAverage = (movingAverage * 3000 + abs(outputs[0][s]) + abs(outputs[1][s])) / 3002;
-    movingAverageInput = (movingAverageInput * 3000 + abs(inputs[0][s] * gainIn) + abs(inputs[1][s] * gainIn)) / 3002;
+
+    left = (leftC.tick(gainIn * inputs[0][s]) * gainOut);
+    right = (rightC.tick(gainIn * inputs[1][s]) * gainOut);
+
+
+    outputs[0][s] = left;
+    outputs[1][s] = right;
+
+
+    movingAverage = (movingAverage * 8000 + abs(outputs[0][s]) + abs(outputs[1][s])) / 8002;
+    movingAverageInput = (movingAverageInput * 8000 + abs(inputs[0][s] * gainIn) + abs(inputs[1][s] * gainIn)) / 8002;
     }
   
   mDisplaySender.PushData({ kCustomWindowSend, {movingAverage*1.75f, leftC.returnGain(), movingAverageInput*1.75f} });
