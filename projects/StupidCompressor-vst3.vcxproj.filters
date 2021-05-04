@@ -403,6 +403,21 @@
     <ClInclude Include="..\src\dsp\SFilter.h">
       <Filter>src\dsp</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\interface\SToggleButton.h">
+      <Filter>src\interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\interface\SOptionChooser.h">
+      <Filter>src\interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dsp\SDistortion.h">
+      <Filter>src\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dsp\SLightLimiter.h">
+      <Filter>src\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dsp\STransients.h">
+      <Filter>src\dsp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

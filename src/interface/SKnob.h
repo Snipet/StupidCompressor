@@ -6,7 +6,7 @@ using namespace igraphics;
 
 class SKnob : public IControl {
 public:
-  SKnob(const IRECT& bounds, int idx, const SKnob_Style& knobStyle) : IControl(bounds, idx) {
+  SKnob(const IRECT& bounds, int idx, const SKnob_Style& knobStyle, float labelSize = 19, float internalTextSize = 12) : IControl(bounds, idx) {
     radius = bounds_math::getRadius(bounds)/1.8;
     style = knobStyle;
     centerx = bounds.L + (bounds.R - bounds.L) / 2;
@@ -17,8 +17,10 @@ public:
     mGearing = 1.85;
     mMouseDown = false;
     specialID = idx;
-
+    labelTextSize = labelSize;
+    textSize = internalTextSize;
   }
+
 
   void Draw(IGraphics& g) {
     const IParam* pParam = GetParam();
@@ -31,9 +33,9 @@ public:
       DrawLabel(g, angle, centerx, centery);
     }
     if (style.inDark) {
-      g.DrawText(IText(19, EAlign::Center, IColor(255, 220, 220, 220)), pParam->GetName(), IRECT(centerx, mRECT.B - 21, centerx, mRECT.B));
+      g.DrawText(IText(labelTextSize, EAlign::Center, IColor(255, 220, 220, 220)), pParam->GetName(), IRECT(centerx, mRECT.B - 21, centerx, mRECT.B));
     }else{
-      g.DrawText(IText(19, EAlign::Center, IColor(255, 50, 50, 50)), pParam->GetName(), IRECT(centerx, mRECT.B - 21, centerx, mRECT.B));
+      g.DrawText(IText(labelTextSize, EAlign::Center, IColor(255, 50, 50, 50)), pParam->GetName(), IRECT(centerx, mRECT.B - 21, centerx, mRECT.B));
     }
   }
 
@@ -45,18 +47,17 @@ public:
 
 
     sprintf(buffer, "%.2f %s", pParam->Value(), pParam->GetLabel());
-    float fontSize = 12;
     if (style.inDark) {
       g.FillCircle(style.mainColor, centerx, centery, radius * 0.8);
       g.DrawArc(style.trackColor.WithContrast(-0.6).WithOpacity(0.4), cx, cy, radius * 0.8, angle >= mAnchorAngle ? mAnchorAngle : mAnchorAngle - (mAnchorAngle - angle), angle >= mAnchorAngle ? angle : mAnchorAngle, &mBlend, style.trackSize / 3);
-      g.DrawText(IText(fontSize, EAlign::Center, style.textColor.WithContrast(-0.5).WithOpacity(0.2)), buffer, IRECT(centerx + 1, centery + 1, centerx + 1, centery + 1));
-      g.DrawText(IText(fontSize, EAlign::Center, style.textColor), buffer, IRECT(centerx, centery, centerx, centery));
+      g.DrawText(IText(textSize, EAlign::Center, style.textColor.WithContrast(-0.5).WithOpacity(0.2)), buffer, IRECT(centerx + 1, centery + 1, centerx + 1, centery + 1));
+      g.DrawText(IText(textSize, EAlign::Center, style.textColor), buffer, IRECT(centerx, centery, centerx, centery));
     }
     else {
       g.FillCircle(style.mainColor.WithContrast(0.05), centerx, centery, radius * 0.8);
       g.DrawArc(style.trackColor.WithContrast(0.6).WithOpacity(0.4), cx, cy, radius * 0.8, angle >= mAnchorAngle ? mAnchorAngle : mAnchorAngle - (mAnchorAngle - angle), angle >= mAnchorAngle ? angle : mAnchorAngle, &mBlend, style.trackSize / 3);
-      g.DrawText(IText(fontSize, EAlign::Center, style.textColor.WithContrast(-0.5).WithOpacity(0.5)), buffer, IRECT(centerx + 1, centery + 1, centerx + 1, centery + 1));
-      g.DrawText(IText(fontSize, EAlign::Center, style.textColor), buffer, IRECT(centerx, centery, centerx, centery));
+      g.DrawText(IText(textSize, EAlign::Center, style.textColor.WithContrast(-0.5).WithOpacity(0.5)), buffer, IRECT(centerx + 1, centery + 1, centerx + 1, centery + 1));
+      g.DrawText(IText(textSize, EAlign::Center, style.textColor), buffer, IRECT(centerx, centery, centerx, centery));
     }
 
   }
@@ -149,5 +150,7 @@ private:
   float mMouseDragValue;
   float mGearing;
   int specialID;
+  float labelTextSize;
+  float textSize;
   SKnob_Style style;
 };

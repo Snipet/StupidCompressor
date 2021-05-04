@@ -14,6 +14,8 @@
 #include "src/interface/SCustomInterface.h"
 #include "src/interface/SRatioViewer.h"
 #include "src/interface/STextButton.h"
+#include "src/interface/SToggleButton.h"
+#include "src/interface/SOptionChooser.h"
 
 StupidCompressor::StupidCompressor(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -21,9 +23,19 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   GetParam(kGainIn)->InitDouble("In Gain", 100., 0., 1000., 0.01, "%");
   GetParam(kGainOut)->InitDouble("Out Gain", 100., 0.,1000., 0.01, "%");
   GetParam(kThreshold)->InitDouble("Threshold", 1., 0.001, 1, 0.001, "");
-  GetParam(kAttack)->InitDouble("Attack", 50., 0.01, 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kAttack)->InitDouble("Attack", 50., 0, 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRelease)->InitDouble("Release", 50., 5., 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRatio)->InitDouble("Ratio", 2, 1, 100, 0.1, "", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kLowpassFreq)->InitDouble("Lowpass Cutoff", 15000, 10, 22000, 0.1, "hz", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kHighpassFreq)->InitDouble("Highpass Cutoff", 500, 10, 22000, 0.1, "hz", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kBandpassCompress)->InitBool("Bandpass Compression", false);
+  GetParam(kClipPower)->InitBool("Clipping", true);
+  GetParam(kClipType)->InitEnum("Cliping Type", 2, {"Soft", "Hard", "Limit" });
+  GetParam(kCompressMode)->InitEnum("Compression Type", 0, { "Feed Forward", "Feedback"});
+  GetParam(kTransientPower)->InitBool("Transients", false);
+  GetParam(kTransients)->InitDouble("Transients", 0, -100.f, 100.f, 0.01, "%");
+  GetParam(kDrive)->InitDouble("Drive", 0, 0, 100, 0.01, "%");
+  GetParam(kLimiterRelease)->InitDouble("Limit Release", 1000, 200, 5000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
 
 
 #if IPLUG_EDITOR // http://bit.ly/2S64BDd
@@ -51,13 +63,19 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     };
 
     auto closeAdvanced = [pGraphics, this](IControl* pCaller) mutable {
-      pGraphics->RemoveControlWithTag(kAdvancedSkin);
-      pGraphics->RemoveControlWithTag(kCloseButton);
+      HideGroup(3);
     };
 
     auto openAdvanced = [pGraphics, this, closeAdvanced](IControl* pCaller) mutable {
-      pGraphics->AttachControl(new SSkin(IRECT(0, 0, PLUG_WIDTH, PLUG_HEIGHT), 1), kAdvancedSkin);
-      pGraphics->AttachControl(new SCloseButton(IRECT(865, 5, 895, 35), closeAdvanced), kCloseButton);
+      ShowGroup(3);
+    };
+
+    auto hideHome = [pGraphics, this, closeAdvanced](IControl* pCaller) mutable {
+      HideGroup(1);
+    };
+
+    auto showHome = [pGraphics, this, closeAdvanced](IControl* pCaller) mutable {
+      ShowGroup(1);
     };
 
     pGraphics->AttachCornerResizer(EUIResizerMode::Scale, false);
@@ -65,25 +83,129 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     pGraphics->LoadFont("Roboto-Regular", ROBOTO_FN);
     b = pGraphics->GetBounds();
 
+ 
+    controls.resize(0);
     pGraphics->AttachControl(new SSkin(IRECT(0, 0, PLUG_WIDTH, PLUG_HEIGHT), 0));
     SKnob_Style style1 = SKnob_Style(IColor(255,50,50,50), IColor(255,200,200,200), IColor(255,240, 240, 240), 4.f, 4.f, IColor(255,40,150,255), false);
     SKnob_Style style2 = SKnob_Style(IColor(255, 217, 217, 217), IColor(255, 38, 38, 38), IColor(255, 38, 38, 38), 4.f, 4.f, IColor(255,40,150,255), true);
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(-85), kThreshold, style1));
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(-85), kRatio, style1));
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(15), kAttack, style1));
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(15), kRelease, style1));
 
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(115), kGainIn, style1));
-    pGraphics->AttachControl(new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(115), kGainOut, style1));
+    SKnob* thresholdKnob;
+    SKnob* ratioKnob;
+    SKnob* attackKnob;
+    SKnob* releaseKnob;
+    SKnob* gainOutKnob;
+    SKnob* gainInKnob;
 
-    pGraphics->AttachControl(new STextButton(IRECT(800,5,900,35), openAdvanced, "Advanced"));
+    SKnob* lowpassKnob;
+    SKnob* highpassKnob;
+    SSkin* advancedSkin;
 
-    pGraphics->AttachControl(new SCustomInterface<3, 512>(IRECT(460, 60, 880, 330), kThreshold), kCustomWindowSend);
-    pGraphics->AttachControl(new SRatioViewer<1, 512>(IRECT(200, 60, 440, 330), {kThreshold, kRatio}));
-    //pGraphics->AttachControl(new SInfoText(IRECT(2,335,500,350), kGainOut), kInfoText);
-    pGraphics->AttachControl(new STextLogoButton(IRECT(5,0,190,40)));
+    SCloseButton* closeButton;
+
+    SCustomInterface<3, 512>* histogram;
+    SRatioViewer<1, 512>* ratioViewer;
+    STextButton* advancedButton;
+    STextLogoButton* logoButton;
+
+    SToggleButton* toggleBandpassCompression;
+    SToggleButton* toggleClipping;
+    SToggleButton* toggleTransients;
+
+    SOptionChooser* compressType;
+    SOptionChooser* clipType;
+
+    SKnob* transientsKnob;
+
+    SKnob* driveKnob;
+    SKnob* limiterReleaseKnob;
+
+    thresholdKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(-85), kThreshold, style1);
+    ratioKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(-85), kRatio, style1);
+    attackKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(15), kAttack, style1);
+    releaseKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(15), kRelease, style1);
+    gainOutKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(115), kGainOut, style1);
+    gainInKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(115), kGainIn, style1);
+
+    histogram = new SCustomInterface<3, 512>(IRECT(460, 60, 880, 330), kThreshold);
+    ratioViewer = new SRatioViewer<1, 512>(IRECT(200, 60, 440, 330), { kThreshold, kRatio });
+    advancedButton = new STextButton(IRECT(800, 5, 900, 35), openAdvanced, "Advanced");
+    logoButton = new STextLogoButton(IRECT(5, 0, 190, 40));
+
+    closeButton = new SCloseButton(IRECT(865, 5, 895, 35), closeAdvanced);
+    advancedSkin = new SSkin(IRECT(0, 0, PLUG_WIDTH, PLUG_HEIGHT), 1);
+
+    toggleBandpassCompression = new SToggleButton(IRECT(20, 300, 240, 330), kBandpassCompress);
+    compressType = new SOptionChooser(IRECT(20, 90, 240, 120), kCompressMode);
+    toggleClipping = new SToggleButton(IRECT(270, 300, 490, 330), kClipPower);
+    clipType = new SOptionChooser(IRECT(270, 90, 490, 120), kClipType);
+
+    toggleTransients = new SToggleButton(IRECT(520, 300, 670, 330), kTransientPower);
+
+    lowpassKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-380).GetVShifted(20), kHighpassFreq, style2, 15, 10);
+    highpassKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-260).GetVShifted(20), kLowpassFreq, style2, 15, 10);
+    transientsKnob = new SKnob(b.GetCentredInside(100).GetHShifted(145).GetVShifted(20), kTransients, style2);
 
 
+    driveKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-130).GetVShifted(20), kDrive, style2);
+    limiterReleaseKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-10).GetVShifted(20), kLimiterRelease, style2);
+
+    controls.push_back(SControl(thresholdKnob, 1));
+    controls.push_back(SControl(ratioKnob, 1));
+    controls.push_back(SControl(attackKnob, 1));
+    controls.push_back(SControl(releaseKnob, 1));
+    controls.push_back(SControl(gainOutKnob, 1));
+    controls.push_back(SControl(gainInKnob, 1));
+
+    controls.push_back(SControl(histogram, 1));
+    controls.push_back(SControl(ratioViewer, 1));
+    controls.push_back(SControl(advancedButton, 1));
+    controls.push_back(SControl(logoButton, 2));
+
+    controls.push_back(SControl(closeButton, 3));
+    controls.push_back(SControl(advancedSkin, 3));
+    controls.push_back(SControl(compressType, 3));
+    controls.push_back(SControl(clipType, 3));
+
+    controls.push_back(SControl(toggleBandpassCompression, 3));
+    controls.push_back(SControl(toggleClipping, 3));
+    controls.push_back(SControl(lowpassKnob, 3));
+    controls.push_back(SControl(highpassKnob, 3));
+    controls.push_back(SControl(transientsKnob, 3));
+    controls.push_back(SControl(toggleTransients, 3));
+
+    controls.push_back(SControl(driveKnob, 3));
+    controls.push_back(SControl(limiterReleaseKnob, 3));
+
+    pGraphics->AttachControl(thresholdKnob);
+    pGraphics->AttachControl(ratioKnob);
+    pGraphics->AttachControl(attackKnob);
+    pGraphics->AttachControl(releaseKnob);
+
+    pGraphics->AttachControl(gainInKnob);
+    pGraphics->AttachControl(gainOutKnob);
+
+    pGraphics->AttachControl(advancedButton);
+
+    pGraphics->AttachControl(histogram, kCustomWindowSend);
+    pGraphics->AttachControl(ratioViewer);
+    pGraphics->AttachControl(logoButton);
+    pGraphics->AttachControl(advancedSkin);
+
+    pGraphics->AttachControl(toggleBandpassCompression);
+    
+    pGraphics->AttachControl(toggleClipping);
+    pGraphics->AttachControl(toggleTransients);
+
+    pGraphics->AttachControl(closeButton, kCloseButton);
+    pGraphics->AttachControl(compressType);
+    pGraphics->AttachControl(clipType);
+    pGraphics->AttachControl(lowpassKnob);
+    pGraphics->AttachControl(highpassKnob);
+    pGraphics->AttachControl(transientsKnob);
+    pGraphics->AttachControl(driveKnob);
+    pGraphics->AttachControl(limiterReleaseKnob);
+    HideGroup(3);
+    
 
   };
   points.resize(0);
@@ -96,7 +218,6 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   movingAverage = 0;
   leftC.setSampleRate(GetSampleRate());
   rightC.setSampleRate(GetSampleRate());
-  splitter.set(0.5, 0.5);
 #endif
 }
 
@@ -105,23 +226,84 @@ void StupidCompressor::ProcessBlock(sample** inputs, sample** outputs, int nFram
 {
   const double gainIn = GetParam(kGainIn)->Value() / 100.;
   const double gainOut = GetParam(kGainOut)->Value() / 100.;
+  const bool clipPower = GetParam(kClipPower)->Value();
   float left;
   float right;
+  float tempLeft;
+  float tempRight;
+  float beforeLeft;
+  float beforeRight;
   for (int s = 0; s < nFrames; s++) {
+    left = inputs[0][s];
+    right = inputs[1][s];
 
-    left = (leftC.tick(gainIn * inputs[0][s]) * gainOut);
-    right = (rightC.tick(gainIn * inputs[1][s]) * gainOut);
+    if (bandpassPower) {
+
+      beforeLeft = left;
+      beforeRight = right;
+
+      lowpass.tick(split, left, right);
+      left = split[0];
+      right = split[2];
+
+      highpass.tick(split, left, right);
+      left = split[0];
+      right = split[2];
+
+      tempLeft = left;
+      tempRight = right;
+    }
+
+    if (compressOption == 0) {
+      left = (leftC.tickFeedForward(gainIn * left) * gainOut);
+      right = (rightC.tickFeedForward(gainIn * right) * gainOut);
+    }
+    else {
+      left = (leftC.tickFeedback(gainIn * inputs[0][s]) * gainOut);
+      right = (rightC.tickFeedback(gainIn * inputs[1][s]) * gainOut);
+    }
+
+    if (bandpassPower) {
+      left = (beforeLeft - tempLeft) + left;
+      right = (beforeRight - tempRight) + right;
+    }
 
 
-    outputs[0][s] = left;
-    outputs[1][s] = right;
+    if (transientsPower) {
+      left = leftT.process(left);
+      right = rightT.process(right);
+    }
+
+    if (clipPower) {
+      switch (clipOption) {
+      case 0:
+        left = leftD.soft(left);
+        right = rightD.soft(right);
+        break;
+
+      case 1:
+        left = leftD.hard(left);
+        right = rightD.hard(right);
+        break;
+
+      case 2:
+        left = leftL.tick(left);
+        right = rightL.tick(right);
+        break;
+      }
+    }
+    
+
+
+    outputs[0][s] = (left);
+    outputs[1][s] = (right);
 
 
     movingAverage = (movingAverage * 8000 + abs(outputs[0][s]) + abs(outputs[1][s])) / 8002;
-    movingAverageInput = (movingAverageInput * 8000 + abs(inputs[0][s] * gainIn) + abs(inputs[1][s] * gainIn)) / 8002;
+    movingAverageInput = (movingAverageInput * 8000 + abs(inputs[0][s]) + abs(inputs[1][s])) / 8002;
     }
   
-  mDisplaySender.PushData({ kCustomWindowSend, {movingAverage*1.75f, leftC.returnGain(), movingAverageInput*1.75f} });
+  mDisplaySender.PushData({ kCustomWindowSend, {movingAverage*2.65f, leftC.returnGain(), movingAverageInput*2.65f} });
 
 }
 
@@ -172,5 +354,65 @@ void StupidCompressor::OnParamChange(int idx) {
     leftC.setRelease(value);
     rightC.setRelease(value);
     break;
+
+  case kBandpassCompress:
+    bandpassPower = value;
+    break;
+
+  case kClipPower:
+    clipPower = value;
+    break;
+
+  case kTransientPower:
+    transientsPower = value;
+    break;
+
+  case kClipType:
+    clipOption = value;
+    break;
+
+  case kCompressMode:
+    compressOption = value;
+    break;
+
+  case kDrive:
+    leftD.setDrive(value / 100);
+    rightD.setDrive(value / 100);
+    leftL.setDrive(value / 100);
+    rightL.setDrive(value / 100);
+    break;
+
+  case kLimiterRelease:
+    leftL.setRelease(value * GetSampleRate()/1000);
+    rightL.setRelease(value * GetSampleRate()/1000);
+    break;
+
+  case kTransients:
+    leftT.setMod(value / 100);
+    rightT.setMod(value / 100);
+    break;
+
+  case kLowpassFreq:
+    lowpass.set(value / GetSampleRate() * 2, 0.707, 0);
+    break;
+
+  case kHighpassFreq:
+    highpass.set(value / GetSampleRate() * 2, 0.707, 1);
+  }
+}
+
+void StupidCompressor::HideGroup(int group) {
+  for (int i = 0; i < controls.size(); i++) {
+    if (controls[i].group == group) {
+      controls[i].control->Hide(true);
+    }
+  }
+}
+
+void StupidCompressor::ShowGroup(int group) {
+  for (int i = 0; i < controls.size(); i++) {
+    if (controls[i].group == group) {
+      controls[i].control->Hide(false);
+    }
   }
 }

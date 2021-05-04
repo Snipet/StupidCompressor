@@ -23,6 +23,7 @@ public:
     g.FillRoundRect(IColor(255, 230, 230, 230), bound, 5);
     DrawData(g, points, dx, window, 0);
     g.FillRoundRect(IColor(255, 50, 50, 50), mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1), 5, 5, 0, 0);
+    g.DrawText(IText(21, EAlign::Center, IColor(255, 240, 240, 240)), "Ratio", mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1));
   }
 
 

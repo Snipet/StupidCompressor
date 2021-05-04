@@ -30,7 +30,17 @@ enum ETempoDivison
 };
 
 
+struct SControl {
+  IControl* control;
+  int group;
+  SControl(IControl* c, int g) {
+    control = c;
+    group = g;
+  }
+  SControl() {
 
+  }
+};
 enum kLFOMessageActions {
   kUpdatePoint = 0,
   kAddPoint,

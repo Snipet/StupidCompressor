@@ -6,6 +6,10 @@
 #include "src/dsp/SLFO.h"
 #include "src/dsp/SCompressor.h"
 #include "src/dsp/SFilter.h"
+#include "src/dsp/SLightLimiter.h"
+#include "src/dsp/SDistortion.h"
+#include "src/dsp/STransients.h"
+#include "common.h"
 
 const int kNumPresets = 1;
 
@@ -23,6 +27,14 @@ enum EParams
   kRelease,
   kLowpassFreq,
   kHighpassFreq,
+  kBandpassCompress,
+  kClipPower,
+  kClipType,
+  kCompressMode,
+  kTransientPower,
+  kTransients,
+  kDrive,
+  kLimiterRelease,
   kNumParams
 };
 
@@ -49,6 +61,8 @@ public:
   void OnParamChangeUI(int idx, EParamSource a) override;
   void OnParamChange(int idx) override;
   bool OnMessage(int msgTag, int ctrlTag, int dataSize, const void* pData) override;
+  void HideGroup(int group);
+  void ShowGroup(int group);
 
 private:
   IRECT b;
@@ -60,8 +74,7 @@ private:
   SCompressor leftC;
   SCompressor rightC;
   float split[4];
-  SFreqSplitter splitter;
-
+  std::vector<SControl> controls;
   float left;
   float right;
   float bandLeft;
@@ -70,6 +83,19 @@ private:
   float compressedRight;
   float outputLeft;
   float outputRight;
+  SLightLimiter leftL;
+  SLightLimiter rightL;
+  bool clipPower;
+  bool bandpassPower;
+  bool transientsPower;
+  int clipOption;
+  int compressOption;
+  SDistortion leftD;
+  SDistortion rightD;
+  STransients leftT;
+  STransients rightT;
+  StereoFilter lowpass;
+  StereoFilter highpass;
 };
 
 

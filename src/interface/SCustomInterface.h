@@ -23,6 +23,7 @@ public:
     DrawData(g, pointsInput, dx, window, (writeIndex + 1) % dx, IColor(120, 0, 255, 200), IColor(140, 20, 20, 20));
     DrawData(g, points, dx, window, (writeIndex + 1) % dx, IColor(255, 100, 150, 255), IColor(255, 50, 50, 50));
     g.FillRoundRect(IColor(255, 50, 50, 50), mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1), 5, 5, 0, 0);
+    g.DrawText(IText(21, EAlign::Center, IColor(255, 240, 240, 240)), "Compression", mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1));
 
     float y1 = window.T + window.H() * (1-GetParam(0)->Value());
     float y2 = window.T + window.H() * (1-gain);

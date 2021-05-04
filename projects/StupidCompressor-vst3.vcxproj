@@ -329,8 +329,11 @@
     <ClInclude Include="..\..\..\IPlug\VST3\IPlugVST3_View.h" />
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\src\dsp\SCompressor.h" />
+    <ClInclude Include="..\src\dsp\SDistortion.h" />
     <ClInclude Include="..\src\dsp\SFilter.h" />
     <ClInclude Include="..\src\dsp\SLFO.h" />
+    <ClInclude Include="..\src\dsp\SLightLimiter.h" />
+    <ClInclude Include="..\src\dsp\STransients.h" />
     <ClInclude Include="..\src\interface\SAboutWindow.h" />
     <ClInclude Include="..\src\interface\SCloseButton.h" />
     <ClInclude Include="..\src\interface\SCustomInterface.h" />
@@ -338,11 +341,13 @@
     <ClInclude Include="..\src\interface\SKnob.h" />
     <ClInclude Include="..\src\interface\SLFOWindow.h" />
     <ClInclude Include="..\src\interface\SOpenLFOButton.h" />
+    <ClInclude Include="..\src\interface\SOptionChooser.h" />
     <ClInclude Include="..\src\interface\SRatioViewer.h" />
     <ClInclude Include="..\src\interface\SSidebar.h" />
     <ClInclude Include="..\src\interface\SSkin.h" />
     <ClInclude Include="..\src\interface\STextButton.h" />
     <ClInclude Include="..\src\interface\STextLogoButton.h" />
+    <ClInclude Include="..\src\interface\SToggleButton.h" />
     <ClInclude Include="..\StupidCompressor.h" />
     <ClInclude Include="..\resources\resource.h" />
   </ItemGroup>

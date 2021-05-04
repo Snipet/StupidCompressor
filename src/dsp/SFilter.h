@@ -10,7 +10,7 @@ void getCoeffs(float(&coeffs)[5], float cutoff, float q, int type, float fgain) 
   float cs = cos(omega);
   float alpha = sn / (2. * q);
   float gain_abs = pow(10, fgain / 40);
-  float a0;
+  float a0 = 0;
   switch (type) {
 
   case 0:
@@ -143,6 +143,55 @@ public:
     _mm_store_ps(split, process);
   }
 
+private:
+  __m128 b0;
+  __m128 b1;
+  __m128 b2;
+  __m128 a1;
+  __m128 a2;
+  __m128 buf0;
+  __m128 buf1;
+  __m128 buf2;
+  __m128 buf3;
+};
+
+class StereoFilter {
+public:
+  StereoFilter() {
+    __m128 zero = _mm_set1_ps(0.f);
+    b0 = b1 = b2 = a1 = a2 = buf0 = buf1 = buf2 = buf3 = zero;
+  }
+
+  void set(float cutoff, float reso, int type = 0) {
+    float coeffs[5];
+    getCoeffs(coeffs, cutoff, reso, type, 0);
+    b0 = _mm_set1_ps(coeffs[0]);
+    b1 = _mm_set1_ps(coeffs[1]);
+    b2 = _mm_set1_ps(coeffs[2]);
+    a1 = _mm_set1_ps(coeffs[3]);
+    a2 = _mm_set1_ps(coeffs[4]);
+  }
+
+
+  void tick(float* split, float left, float right) {
+    __m128 input = _mm_set_ps(right, right, left, left);
+    __m128 t1 = _mm_mul_ps(input, b0);
+    __m128 t2 = _mm_mul_ps(buf0, b1);
+    __m128 t3 = _mm_mul_ps(buf1, b2);
+    __m128 t4 = _mm_mul_ps(buf2, a1);
+    __m128 t5 = _mm_mul_ps(buf3, a2);
+
+    __m128 process = _mm_add_ps(t1, t2);
+    process = _mm_add_ps(process, t3);
+    process = _mm_sub_ps(process, t4);
+    process = _mm_sub_ps(process, t5);
+
+    buf1 = buf0;
+    buf0 = input;
+    buf3 = buf2;
+    buf2 = process;
+    _mm_store_ps(split, process);
+  }
 private:
   __m128 b0;
   __m128 b1;
