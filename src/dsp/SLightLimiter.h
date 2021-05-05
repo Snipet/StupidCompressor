@@ -8,11 +8,11 @@ public:
     sampleRate = 44100;
     release = 50000;
     gain = 0;
-    threshold = 0.5;
+    threshold = 0.9;
     lastOutput = 0;
     drive = 1;
     sustainTick = 0;
-    sustain = 500000;
+    sustain = 900;
     peak = threshold;
   }
 
@@ -33,17 +33,22 @@ public:
     if ((input > threshold) || (input < -threshold)) {
       if (abs(gain * input) > threshold) {
         gain = threshold / abs(input);
+        sustainTick = 0;
       }
 
     }
     else {
+      if (sustainTick == sustain) {
         gain = (gain * release + threshold) / (release + 1);
+      }
+      else {
+        sustainTick++;
+      }
     }
 
-    peak = (peak * 100000 + threshold) / 100001;
 
     lastOutput = input * gain;
-    return lastOutput;
+    return tanh(lastOutput);
   }
 
 private:

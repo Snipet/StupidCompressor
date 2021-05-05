@@ -14,7 +14,7 @@ public:
   }
 
   void Draw(IGraphics& g) {
-    g.DrawText(IText(35, EAlign::Near, IColor(255, 250, 250, 250)), "stupid example", mRECT);
+    g.DrawText(IText(35, EAlign::Near, IColor(255, 250, 250, 250)), "stupid compressor", mRECT);
   }
 
 

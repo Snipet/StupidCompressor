@@ -63,6 +63,7 @@ public:
   bool OnMessage(int msgTag, int ctrlTag, int dataSize, const void* pData) override;
   void HideGroup(int group);
   void ShowGroup(int group);
+  void ManageSpecialCases(int openGroup);
 
 private:
   IRECT b;
@@ -96,6 +97,8 @@ private:
   STransients rightT;
   StereoFilter lowpass;
   StereoFilter highpass;
+  int openGroup;
+  int uiLastChange;
 };
 
 

@@ -7,9 +7,9 @@ using namespace igraphics;
 
 class SInfoText : public IControl {
 public:
-  SInfoText(const IRECT& bounds, int param) : IControl(bounds) {
+  SInfoText(const IRECT& bounds, int param, bool bright) : IControl(bounds) {
     idx = param;
-
+    light = bright;
   }
 
   void Draw(IGraphics& g) {
@@ -23,9 +23,15 @@ public:
       sprintf(buffer, "%s %.2f %s", g.GetDelegate()->GetParam(idx)->GetName(), g.GetDelegate()->GetParam(idx)->Value(), g.GetDelegate()->GetParam(idx)->GetLabel());
       break;
     }
-    g.DrawText(IText(19, EAlign::Far, IColor(255, 50, 50, 50)), buffer, mRECT);
+    if (light) {
+      g.DrawText(IText(19, EAlign::Far, IColor(255, 50, 50, 50)), buffer, mRECT);
+    }
+    else {
+      g.DrawText(IText(19, EAlign::Far, IColor(255, 230, 230, 230)), buffer, mRECT);
+    }
   }
 
 private:
   int idx;
+  bool light;
 };

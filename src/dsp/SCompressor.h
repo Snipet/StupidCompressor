@@ -43,7 +43,9 @@ public:
   float tickFeedback(float input) {
     movingAverage = (movingAverage * 50 + abs(lastValue)) / 51;
     if (movingAverage*2 > threshold) {
-      gain = (gain * attack + getGain(movingAverage*2)) / (attack + 1);
+      if (abs(gain * input > threshold)) {
+        gain = (gain * attack + getGain(movingAverage * 2)) / (attack + 1);
+      }
     }
     else {
       gain = (gain * release+1) / (release + 1);
@@ -56,13 +58,21 @@ public:
   float tickFeedForward(float input) {
     movingAverage = (movingAverage * 50 + abs(input)) / 51;
     if (movingAverage * 2 > threshold) {
-      gain = (gain * attack + getGain(movingAverage * 2)) / (attack + 1);
+      if (abs(gain * input > threshold)) {
+        gain = (gain * attack + getGain(movingAverage * 2)) / (attack + 1);
+      }
     }
     else {
       gain = (gain * release + 1) / (release + 1);
     }
     lastValue = input * gain;
     return lastValue;
+  }
+
+  float TickMovingAverage(float input) {
+    movingAverage = (movingAverage * 500 + abs(input)) / 501;
+    gain = threshold / movingAverage;
+    return input * threshold + (input * (1-threshold) * gain);
   }
 
 

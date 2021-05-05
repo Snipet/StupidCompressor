@@ -29,7 +29,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   GetParam(kLowpassFreq)->InitDouble("Lowpass Cutoff", 15000, 10, 22000, 0.1, "hz", 0, "", IParam::ShapePowCurve(3));
   GetParam(kHighpassFreq)->InitDouble("Highpass Cutoff", 500, 10, 22000, 0.1, "hz", 0, "", IParam::ShapePowCurve(3));
   GetParam(kBandpassCompress)->InitBool("Bandpass Compression", false);
-  GetParam(kClipPower)->InitBool("Clipping", true);
+  GetParam(kClipPower)->InitBool("Clipping", false);
   GetParam(kClipType)->InitEnum("Cliping Type", 2, {"Soft", "Hard", "Limit" });
   GetParam(kCompressMode)->InitEnum("Compression Type", 0, { "Feed Forward", "Feedback"});
   GetParam(kTransientPower)->InitBool("Transients", false);
@@ -64,10 +64,12 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
 
     auto closeAdvanced = [pGraphics, this](IControl* pCaller) mutable {
       HideGroup(3);
+      openGroup = 1;
     };
 
     auto openAdvanced = [pGraphics, this, closeAdvanced](IControl* pCaller) mutable {
       ShowGroup(3);
+      openGroup = 3;
     };
 
     auto hideHome = [pGraphics, this, closeAdvanced](IControl* pCaller) mutable {
@@ -129,7 +131,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     histogram = new SCustomInterface<3, 512>(IRECT(460, 60, 880, 330), kThreshold);
     ratioViewer = new SRatioViewer<1, 512>(IRECT(200, 60, 440, 330), { kThreshold, kRatio });
     advancedButton = new STextButton(IRECT(800, 5, 900, 35), openAdvanced, "Advanced");
-    logoButton = new STextLogoButton(IRECT(5, 0, 190, 40));
+    logoButton = new STextLogoButton(IRECT(5, 0, 240, 40));
 
     closeButton = new SCloseButton(IRECT(865, 5, 895, 35), closeAdvanced);
     advancedSkin = new SSkin(IRECT(0, 0, PLUG_WIDTH, PLUG_HEIGHT), 1);
@@ -174,7 +176,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     controls.push_back(SControl(toggleTransients, 3));
 
     controls.push_back(SControl(driveKnob, 3));
-    controls.push_back(SControl(limiterReleaseKnob, 3));
+    controls.push_back(SControl(limiterReleaseKnob, 3, 1));
 
     pGraphics->AttachControl(thresholdKnob);
     pGraphics->AttachControl(ratioKnob);
@@ -205,6 +207,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     pGraphics->AttachControl(driveKnob);
     pGraphics->AttachControl(limiterReleaseKnob);
     HideGroup(3);
+    openGroup = 1;
     
 
   };
@@ -218,6 +221,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   movingAverage = 0;
   leftC.setSampleRate(GetSampleRate());
   rightC.setSampleRate(GetSampleRate());
+  uiLastChange = 0;
 #endif
 }
 
@@ -254,13 +258,22 @@ void StupidCompressor::ProcessBlock(sample** inputs, sample** outputs, int nFram
       tempRight = right;
     }
 
-    if (compressOption == 0) {
+    switch (compressOption) {
+    case 0:
+
       left = (leftC.tickFeedForward(gainIn * left) * gainOut);
       right = (rightC.tickFeedForward(gainIn * right) * gainOut);
-    }
-    else {
+      break;
+
+    case 1:
       left = (leftC.tickFeedback(gainIn * inputs[0][s]) * gainOut);
       right = (rightC.tickFeedback(gainIn * inputs[1][s]) * gainOut);
+      break;
+
+    case 2:
+      left = (leftC.TickMovingAverage(gainIn * inputs[0][s]) * gainOut);
+      right = (rightC.TickMovingAverage(gainIn * inputs[1][s]) * gainOut);
+      break;
     }
 
     if (bandpassPower) {
@@ -315,7 +328,14 @@ void StupidCompressor::OnIdle() {
 void StupidCompressor::OnParamChangeUI(int idx, EParamSource a) {
   if (auto graphics = GetUI()) {
     GetUI()->RemoveControlWithTag(kInfoText);
-    GetUI()->AttachControl(new SInfoText(IRECT(500,335,900,350), idx), kInfoText);
+    GetUI()->AttachControl(new SInfoText(IRECT(500,335,900,350), idx, (openGroup==1)), kInfoText);
+    uiLastChange = idx;
+  }
+
+  switch (idx) {
+  case kClipType:
+    ManageSpecialCases(openGroup);
+    break;
   }
 }
 
@@ -413,6 +433,33 @@ void StupidCompressor::ShowGroup(int group) {
   for (int i = 0; i < controls.size(); i++) {
     if (controls[i].group == group) {
       controls[i].control->Hide(false);
+
+    }
+  }
+  ManageSpecialCases(group);
+  if (auto graphics = GetUI()) {
+    GetUI()->RemoveControlWithTag(kInfoText);
+    GetUI()->AttachControl(new SInfoText(IRECT(500, 335, 900, 350), uiLastChange, (group == 1)), kInfoText);
+  }
+}
+
+
+void StupidCompressor::ManageSpecialCases(int group) {
+  for (int i = 0; i < controls.size(); i++) {
+    if (controls[i].group == group) {
+
+      //------------------------------Begin custom cases
+
+      if (controls[i].specialCase == 1) {
+        //Limiter release
+
+        if (clipOption == 2) {
+          controls[i].control->Hide(false);
+        }
+        else {
+          controls[i].control->Hide(true);
+        }
+      }
     }
   }
 }

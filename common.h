@@ -33,9 +33,11 @@ enum ETempoDivison
 struct SControl {
   IControl* control;
   int group;
-  SControl(IControl* c, int g) {
+  int specialCase;
+  SControl(IControl* c, int g, int sc = 0) {
     control = c;
     group = g;
+    specialCase = sc;
   }
   SControl() {
 
