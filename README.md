@@ -1,2 +1,2 @@
 # StupidCompressor
-A basic volume control effect plug-in with IGraphics GUI
+Visual audio compressor designed with ease and speed in mind. 
