@@ -13,6 +13,7 @@ public:
   }
 
   void Draw(IGraphics& g) {
+    g.FillRoundRect(IColor(255, 50, 50, 50), mRECT, 5);
     g.DrawText(IText(size, EAlign::Center, IColor(255, 245, 245, 245)), label, mRECT);
   }
 

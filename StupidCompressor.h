@@ -35,6 +35,8 @@ enum EParams
   kTransients,
   kDrive,
   kLimiterRelease,
+  kMasterInput,
+  kMasterOutput,
   kNumParams
 };
 
@@ -99,6 +101,8 @@ private:
   StereoFilter highpass;
   int openGroup;
   int uiLastChange;
+  float masterGainInput;
+  float masterGainOutput;
 };
 
 

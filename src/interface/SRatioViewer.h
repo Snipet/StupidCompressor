@@ -39,7 +39,7 @@ public:
     float x = 0;
     float inc = window.W() / (float)dx / window.W();
     float ratio = GetParam(1)->Value();
-    float threshold = GetParam(0)->Value();
+    float threshold = 1-GetParam(0)->Value()/100;
     for (int i = 0; i < dx; i++) {
       if (x < threshold) {
         points[i] = x;

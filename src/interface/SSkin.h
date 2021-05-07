@@ -10,8 +10,8 @@ public:
   SSkin(const IRECT& bounds, int selection) : IControl(bounds) {
     type = selection;
     bandpassCompressionWindow = IRECT(10, 50, 250, 340);
-    clippingWindow = IRECT(260, 50, 500, 340);
-    transientWindow = IRECT(510, 50, 680, 340);
+    clippingWindow = IRECT(440, 50, 680, 340);
+    transientWindow = IRECT(260, 50, 430, 340);
     topPadding = -262;
   }
 

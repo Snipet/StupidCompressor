@@ -22,7 +22,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
 {
   GetParam(kGainIn)->InitDouble("In Gain", 100., 0., 1000., 0.01, "%");
   GetParam(kGainOut)->InitDouble("Out Gain", 100., 0.,1000., 0.01, "%");
-  GetParam(kThreshold)->InitDouble("Threshold", 1., 0.001, 1, 0.001, "");
+  GetParam(kThreshold)->InitDouble("Compression", 0., 0.001, 100, 0.001, "");
   GetParam(kAttack)->InitDouble("Attack", 50., 0, 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRelease)->InitDouble("Release", 50., 5., 1000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
   GetParam(kRatio)->InitDouble("Ratio", 2, 1, 100, 0.1, "", 0, "", IParam::ShapePowCurve(3));
@@ -36,6 +36,8 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
   GetParam(kTransients)->InitDouble("Transients", 0, -100.f, 100.f, 0.01, "%");
   GetParam(kDrive)->InitDouble("Drive", 0, 0, 100, 0.01, "%");
   GetParam(kLimiterRelease)->InitDouble("Limit Release", 1000, 200, 5000, 0.01, "ms", 0, "", IParam::ShapePowCurve(3));
+  GetParam(kMasterInput)->InitDouble("Master Input", 100., 0., 120., 0.01, "%");
+  GetParam(kMasterOutput)->InitDouble("Master Output", 100., 0., 120., 0.01, "%");
 
 
 #if IPLUG_EDITOR // http://bit.ly/2S64BDd
@@ -121,6 +123,9 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     SKnob* driveKnob;
     SKnob* limiterReleaseKnob;
 
+    SKnob* masterInputKnob;
+    SKnob* masterOutputKnob;
+
     thresholdKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(-85), kThreshold, style1);
     ratioKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-300).GetVShifted(-85), kRatio, style1);
     attackKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-400).GetVShifted(15), kAttack, style1);
@@ -130,7 +135,7 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
 
     histogram = new SCustomInterface<3, 512>(IRECT(460, 60, 880, 330), kThreshold);
     ratioViewer = new SRatioViewer<1, 512>(IRECT(200, 60, 440, 330), { kThreshold, kRatio });
-    advancedButton = new STextButton(IRECT(800, 5, 900, 35), openAdvanced, "Advanced");
+    advancedButton = new STextButton(IRECT(795, 5, 895, 33), openAdvanced, "Advanced");
     logoButton = new STextLogoButton(IRECT(5, 0, 240, 40));
 
     closeButton = new SCloseButton(IRECT(865, 5, 895, 35), closeAdvanced);
@@ -138,18 +143,21 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
 
     toggleBandpassCompression = new SToggleButton(IRECT(20, 300, 240, 330), kBandpassCompress);
     compressType = new SOptionChooser(IRECT(20, 90, 240, 120), kCompressMode);
-    toggleClipping = new SToggleButton(IRECT(270, 300, 490, 330), kClipPower);
-    clipType = new SOptionChooser(IRECT(270, 90, 490, 120), kClipType);
+    toggleClipping = new SToggleButton(IRECT(450, 300, 670, 330), kClipPower);
+    clipType = new SOptionChooser(IRECT(450, 90, 670, 120), kClipType);
 
-    toggleTransients = new SToggleButton(IRECT(520, 300, 670, 330), kTransientPower);
+    toggleTransients = new SToggleButton(IRECT(270, 300, 420, 330), kTransientPower);
 
     lowpassKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-380).GetVShifted(20), kHighpassFreq, style2, 15, 10);
     highpassKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-260).GetVShifted(20), kLowpassFreq, style2, 15, 10);
-    transientsKnob = new SKnob(b.GetCentredInside(100).GetHShifted(145).GetVShifted(20), kTransients, style2);
+    transientsKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-105).GetVShifted(20), kTransients, style2);
 
 
-    driveKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-130).GetVShifted(20), kDrive, style2);
-    limiterReleaseKnob = new SKnob(b.GetCentredInside(100).GetHShifted(-10).GetVShifted(20), kLimiterRelease, style2);
+    driveKnob = new SKnob(b.GetCentredInside(100).GetHShifted(50).GetVShifted(20), kDrive, style2);
+    limiterReleaseKnob = new SKnob(b.GetCentredInside(100).GetHShifted(170).GetVShifted(20), kLimiterRelease, style2);
+
+    masterInputKnob = new SKnob(b.GetCentredInside(100).GetHShifted(350).GetVShifted(-55), kMasterInput, style2);
+    masterOutputKnob = new SKnob(b.GetCentredInside(100).GetHShifted(350).GetVShifted(75), kMasterOutput, style2);
 
     controls.push_back(SControl(thresholdKnob, 1));
     controls.push_back(SControl(ratioKnob, 1));
@@ -177,6 +185,9 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
 
     controls.push_back(SControl(driveKnob, 3));
     controls.push_back(SControl(limiterReleaseKnob, 3, 1));
+
+    controls.push_back(SControl(masterInputKnob, 3));
+    controls.push_back(SControl(masterOutputKnob, 3));
 
     pGraphics->AttachControl(thresholdKnob);
     pGraphics->AttachControl(ratioKnob);
@@ -206,6 +217,9 @@ StupidCompressor::StupidCompressor(const InstanceInfo& info)
     pGraphics->AttachControl(transientsKnob);
     pGraphics->AttachControl(driveKnob);
     pGraphics->AttachControl(limiterReleaseKnob);
+
+    pGraphics->AttachControl(masterInputKnob);
+    pGraphics->AttachControl(masterOutputKnob);
     HideGroup(3);
     openGroup = 1;
     
@@ -238,8 +252,8 @@ void StupidCompressor::ProcessBlock(sample** inputs, sample** outputs, int nFram
   float beforeLeft;
   float beforeRight;
   for (int s = 0; s < nFrames; s++) {
-    left = inputs[0][s];
-    right = inputs[1][s];
+    left = inputs[0][s] * masterGainInput;
+    right = inputs[1][s] * masterGainInput;
 
     if (bandpassPower) {
 
@@ -308,8 +322,8 @@ void StupidCompressor::ProcessBlock(sample** inputs, sample** outputs, int nFram
     
 
 
-    outputs[0][s] = (left);
-    outputs[1][s] = (right);
+    outputs[0][s] = left * masterGainOutput;
+    outputs[1][s] = right * masterGainOutput;
 
 
     movingAverage = (movingAverage * 8000 + abs(outputs[0][s]) + abs(outputs[1][s])) / 8002;
@@ -356,8 +370,8 @@ void StupidCompressor::OnParamChange(int idx) {
   auto value = GetParam(idx)->Value();
   switch (idx) {
   case kThreshold:
-    leftC.setThreshold(value);
-    rightC.setThreshold(value);
+    leftC.setThreshold(1 - value / 100);
+    rightC.setThreshold(1 - value / 100);
     break;
 
   case kRatio:
@@ -418,7 +432,17 @@ void StupidCompressor::OnParamChange(int idx) {
 
   case kHighpassFreq:
     highpass.set(value / GetSampleRate() * 2, 0.707, 1);
+    break;
+
+  case kMasterInput:
+    masterGainInput = value / 100;
+    break;
+
+  case kMasterOutput:
+    masterGainOutput = value / 100;
+    break;
   }
+
 }
 
 void StupidCompressor::HideGroup(int group) {

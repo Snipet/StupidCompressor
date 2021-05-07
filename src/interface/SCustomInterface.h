@@ -25,7 +25,7 @@ public:
     g.FillRoundRect(IColor(255, 50, 50, 50), mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1), 5, 5, 0, 0);
     g.DrawText(IText(21, EAlign::Center, IColor(255, 240, 240, 240)), "Compression", mRECT.GetPadded(0, 0, 0, -mRECT.H() / 1.1));
 
-    float y1 = window.T + window.H() * (1-GetParam(0)->Value());
+    float y1 = window.T + window.H() * (GetParam(0)->Value()/100);
     float y2 = window.T + window.H() * (1-gain);
     g.DrawLine(IColor(150, 10, 100, 255), window.L, y1, window.R, y1, 0, 5);
     g.DrawLine(IColor(150, 50, 50, 50), window.L, y2, window.R, y2, 0, 5);
