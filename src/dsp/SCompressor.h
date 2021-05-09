@@ -69,6 +69,13 @@ public:
     return lastValue;
   }
 
+  float TickMovingAverage(float input) {
+    movingAverage = (movingAverage * 500 + abs(input)) / 501;
+    gain = threshold / movingAverage;
+    return input * threshold + (input * (1-threshold) * gain);
+  }
+
+
 private:
   float movingAverage;
   float attack;
